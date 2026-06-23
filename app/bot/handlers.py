@@ -1,4 +1,6 @@
 import telebot
+import threading
+from app.exporters.charts import update_single_chart
 from datetime import datetime
 from app.core.config import config
 from app.core.database import db
@@ -175,10 +177,10 @@ def handle_callbacks(call):
         elif action == "r_p1":
             state['reps'] += 1
 
+
         elif action == "save":
             ex_name = EXERCISES[state['cycle']][state['ex'] - 1]
             target_date = state['target_date']
-
             db.save_log(target_date, state['who'], state['cycle'], ex_name, state['set'], state['weight'],
                         state['reps'])
 
@@ -196,6 +198,13 @@ def handle_callbacks(call):
 
             if success:
                 bot.answer_callback_query(call.id, f"Подход {state['set']} сохранен!")
+
+                threading.Thread(
+                    target=update_single_chart,
+                    args=(state['who'], state['cycle'], state['ex'] - 1, ex_name),
+                    daemon=True
+                ).start()
+
                 state['set'] = min(5, state['set'] + 1)
             else:
                 bot.answer_callback_query(call.id, "Ошибка сохранения в таблицу!", show_alert=True)

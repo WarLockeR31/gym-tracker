@@ -4,6 +4,7 @@ from app.core.config import config
 from app.core.database import db
 from app.bot.keyboards import EXERCISES
 from app.exporters.spreadsheet import GymSpreadsheet
+from app.exporters.charts import render_charts_for_user
 from app.exporters.styles import (
     DATA_FORMAT, DATA_LAST_ROW_FORMAT,
     EXERCISE_FORMAT, EXERCISE_LAST_ROW_FORMAT,
@@ -104,6 +105,9 @@ def fast_rebuild():
                     gym_doc.doc.batch_update({"requests": merge_requests})
 
             time.sleep(2)
+
+    render_charts_for_user('me')
+    render_charts_for_user('friend')
 
 if __name__ == "__main__":
     fast_rebuild()
