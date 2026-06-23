@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  gym_bot:
+    build: .
+    container_name: gym_bot
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./creds:/app/creds
