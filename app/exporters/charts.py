@@ -38,7 +38,7 @@ def upload_to_imgbb(buf):
     url = "https://api.imgbb.com/1/upload"
     payload = {
         "key": config.IMGBB_API_KEY,
-        "image": base64.b64encode(buf.getvalue()).decode('utf-8')
+        "image": base64.b64encode(buf.getvalue()).decode('utf-8'),
         "expiration": 15552000
     }
 
