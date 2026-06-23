@@ -2,7 +2,10 @@ import telebot
 from datetime import datetime
 from app.core.config import config
 from app.core.database import db
-from app.bot.keyboards import get_cycles_kb, get_exercises_kb, get_input_kb, EXERCISES
+from app.bot.keyboards import (
+    get_cycles_kb, get_exercises_kb, get_input_kb, EXERCISES,
+    get_weight_grid_kb, get_set_grid_kb, get_reps_grid_kb
+)
 from app.bot.calendar import get_calendar_kb
 from app.exporters.spreadsheet import export_to_sheets
 
@@ -96,6 +99,51 @@ def handle_callbacks(call):
         ex_name = EXERCISES[state['cycle']][state['ex'] - 1]
         text = f"🏋️ **{ex_name}**\nНастрой параметры и запиши подход:"
         bot.edit_message_text(text, chat_id, msg_id, reply_markup=get_input_kb(state), parse_mode="Markdown")
+        return
+
+    elif data == "open_weight_grid":
+        bot.edit_message_reply_markup(chat_id, msg_id, reply_markup=get_weight_grid_kb())
+        return
+
+    elif data == "open_set_grid":
+        bot.edit_message_reply_markup(chat_id, msg_id, reply_markup=get_set_grid_kb())
+        return
+
+    elif data == "open_reps_grid":
+        bot.edit_message_reply_markup(chat_id, msg_id, reply_markup=get_reps_grid_kb())
+        return
+
+    elif data == "back_to_input":
+        state = db.get_state(msg_id)
+        if not state:
+            bot.answer_callback_query(call.id, "Ошибка сессии.", show_alert=True)
+            return
+        bot.edit_message_reply_markup(chat_id, msg_id, reply_markup=get_input_kb(state))
+        return
+
+    elif data.startswith("set_grid_"):
+        parts = data.split("_")  # ['set', 'grid', 'weight', '80']
+        action = parts[2]
+        val_str = parts[3]
+
+        state = db.get_state(msg_id)
+        if not state:
+            bot.answer_callback_query(call.id, "Ошибка сессии. Начни заново /workout", show_alert=True)
+            return
+
+        if action == "weight":
+            state['weight'] = float(val_str)
+        elif action == "set":
+            state['set'] = int(val_str)
+        elif action == "reps":
+            state['reps'] = int(val_str)
+
+        db.save_state(
+            msg_id, chat_id, state['cycle'], state['ex'], state['set'],
+            state['who'], state['weight'], state['reps'], state['target_date']
+        )
+
+        bot.edit_message_reply_markup(chat_id, msg_id, reply_markup=get_input_kb(state))
         return
 
     elif data.startswith("input_"):

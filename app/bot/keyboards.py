@@ -35,7 +35,7 @@ def get_input_kb(state: dict):
 
     kb.row(
         InlineKeyboardButton("◀️ Подход", callback_data="input_s_m1"),
-        InlineKeyboardButton(f"🔢 Подход {state['set']}", callback_data="none"),
+        InlineKeyboardButton(f"🔢 Подход {state['set']}", callback_data="open_set_grid"),
         InlineKeyboardButton("Подход ▶️", callback_data="input_s_p1")
     )
 
@@ -44,7 +44,7 @@ def get_input_kb(state: dict):
 
     kb.row(
         InlineKeyboardButton("-5 кг", callback_data="input_w_m5"),
-        InlineKeyboardButton(f"⚖️ {state['weight']} кг", callback_data="none"),
+        InlineKeyboardButton(f"⚖️ {state['weight']} кг", callback_data="open_weight_grid"),
         InlineKeyboardButton("+5 кг", callback_data="input_w_p5")
     )
     kb.row(
@@ -55,11 +55,33 @@ def get_input_kb(state: dict):
 
     kb.row(
         InlineKeyboardButton("-1 раз", callback_data="input_r_m1"),
-        InlineKeyboardButton(f"🔄 {state['reps']} раз", callback_data="none"),
+        InlineKeyboardButton(f"🔄 {state['reps']} раз", callback_data="open_reps_grid"),
         InlineKeyboardButton("+1 раз", callback_data="input_r_p1")
     )
 
     kb.add(InlineKeyboardButton("✅ ЗАПИСАТЬ ПОДХОД", callback_data="input_save"))
     kb.add(InlineKeyboardButton("⬅️ Назад к упражнениям", callback_data=f"back_to_ex_{state['cycle']}"))
 
+    return kb
+
+def get_weight_grid_kb():
+    kb = InlineKeyboardMarkup(row_width=3)
+    weights = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    buttons = [InlineKeyboardButton(f"{w} кг", callback_data=f"set_grid_weight_{w}") for w in weights]
+    kb.add(*buttons)
+    kb.add(InlineKeyboardButton("⬅️ Назад", callback_data="back_to_input"))
+    return kb
+
+def get_set_grid_kb():
+    kb = InlineKeyboardMarkup(row_width=5)
+    buttons = [InlineKeyboardButton(f"{s}", callback_data=f"set_grid_set_{s}") for s in range(1, 6)]
+    kb.add(*buttons)
+    kb.add(InlineKeyboardButton("⬅️ Назад", callback_data="back_to_input"))
+    return kb
+
+def get_reps_grid_kb():
+    kb = InlineKeyboardMarkup(row_width=3)
+    buttons = [InlineKeyboardButton(f"{r}", callback_data=f"set_grid_reps_{r}") for r in range(10, 16)]
+    kb.add(*buttons)
+    kb.add(InlineKeyboardButton("⬅️ Назад", callback_data="back_to_input"))
     return kb
