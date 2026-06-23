@@ -29,4 +29,4 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           script: |
             cd /root/gym-tracker
-            docker compose up -d --build
+            docker-compose up -d --build
