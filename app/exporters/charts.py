@@ -1,11 +1,11 @@
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import io
 import time
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-from google.oauth2.service_account import Credentials
+import requests
+import base64
 from gspread.utils import rowcol_to_a1
 
 from app.core.config import config
@@ -17,6 +17,7 @@ from app.exporters.spreadsheet import GymSpreadsheet
 
 def create_chart(dates, weights, title):
     plt.figure(figsize=(6, 4))
+
     plt.plot(dates, weights, marker='o', linestyle='-', color='#1f77b4', linewidth=2, markersize=8)
 
     plt.title(title, fontsize=14, pad=15, fontweight='bold')
@@ -33,23 +34,24 @@ def create_chart(dates, weights, title):
     return buf
 
 
-def upload_to_drive(buf, filename):
-    scopes = ["https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_file(config.GOOGLE_CREDS_PATH, scopes=scopes)
-    service = build('drive', 'v3', credentials=creds)
+def upload_to_imgbb(buf):
+    url = "https://api.imgbb.com/1/upload"
+    payload = {
+        "key": config.IMGBB_API_KEY,
+        "image": base64.b64encode(buf.getvalue()).decode('utf-8')
+        "expiration": 15552000
+    }
 
-    file_metadata = {'name': filename}
-    media = MediaIoBaseUpload(buf, mimetype='image/png', resumable=True)
-
-    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    file_id = file.get('id')
-
-    service.permissions().create(
-        fileId=file_id,
-        body={'type': 'anyone', 'role': 'reader'}
-    ).execute()
-
-    return f'https://drive.google.com/uc?id={file_id}'
+    try:
+        response = requests.post(url, data=payload)
+        if response.status_code == 200:
+            return response.json()['data']['url']
+        else:
+            logger.error(f"Ошибка ImgBB: {response.text}")
+            return None
+    except Exception as e:
+        logger.error(f"Ошибка сети при загрузке в ImgBB: {e}")
+        return None
 
 
 def render_charts_for_user(who='me'):
@@ -65,14 +67,14 @@ def render_charts_for_user(who='me'):
         logger.info("Лист 'Графики' не найден. Создаю новый...")
         ws = gym_doc.doc.add_worksheet(title="Графики", rows=10, cols=5)
 
-    requests = [
+    requests_format = [
         {"updateDimensionProperties": {
             "range": {"sheetId": ws.id, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 3},
             "properties": {"pixelSize": 500}, "fields": "pixelSize"}},
         {"updateDimensionProperties": {"range": {"sheetId": ws.id, "dimension": "ROWS", "startIndex": 1, "endIndex": 7},
                                        "properties": {"pixelSize": 350}, "fields": "pixelSize"}}
     ]
-    gym_doc.doc.batch_update({"requests": requests})
+    gym_doc.doc.batch_update({"requests": requests_format})
 
     matrix = [["Цикл 1", "Цикл 2", "Цикл 3"]]
 
@@ -100,9 +102,14 @@ def render_charts_for_user(who='me'):
 
             logger.info(f"Отрисовка: Цикл {cycle} | {ex_name} ({len(dates)} точек)")
             buf = create_chart(dates, weights, ex_name)
-            url = upload_to_drive(buf, f"chart_{who}_{cycle}_{ex_idx}.png")
-            row.append(f'=IMAGE("{url}")')
-            time.sleep(1.5)
+            url = upload_to_imgbb(buf)
+
+            if url:
+                row.append(f'=IMAGE("{url}")')
+            else:
+                row.append("Ошибка загрузки")
+
+            time.sleep(0.5)
 
         matrix.append(row)
 
@@ -143,12 +150,14 @@ def update_single_chart(who: str, cycle: int, ex_idx: int, ex_name: str):
     weights = [d[1] for d in data]
 
     buf = create_chart(dates, weights, ex_name)
-    url = upload_to_drive(buf, f"chart_{who}_{cycle}_{ex_idx}_{int(time.time())}.png")
+    url = upload_to_imgbb(buf)
 
-    cell_a1 = rowcol_to_a1(ex_idx + 2, cycle)
+    if url:
+        cell_a1 = rowcol_to_a1(ex_idx + 2, cycle)
 
-    ws.update(range_name=cell_a1, values=[[f'=IMAGE("{url}")']], value_input_option='USER_ENTERED')
-    logger.info(f"График '{ex_name}' обновлен в ячейке {cell_a1}!")
+        timestamped_url = f'{url}?t={int(time.time())}'
+        ws.update(range_name=cell_a1, values=[[f'=IMAGE("{timestamped_url}")']], value_input_option='USER_ENTERED')
+        logger.info(f"График '{ex_name}' обновлен в ячейке {cell_a1}!")
 
 
 if __name__ == "__main__":

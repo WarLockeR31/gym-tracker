@@ -12,6 +12,7 @@ class Config:
     BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
     SPREADSHEET_ID_ME = os.getenv("SPREADSHEET_ID_ME")
     SPREADSHEET_ID_FRIEND = os.getenv("SPREADSHEET_ID_FRIEND")
+    IMGBB_API_KEY = os.getenv("IMGBB_API_KEY")
 
     # Google
     _creds_relative_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_PATH", "creds/service_account.json")
